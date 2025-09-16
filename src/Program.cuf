@@ -1,0 +1,223 @@
+
+module LocalConvertor
+    implicit none
+
+contains
+    attributes(device) real(8) function PrimitiveToConserved(index, rho, v, P, gamma) 
+        integer(4), intent(in):: index
+        real(8), intent(in) :: rho, v, P, gamma
+
+        real(8) :: px, E
+
+        px = rho*v
+        E = P/(gamma-1)+0.5_8*rho*v**2
+
+        if (index==0) then
+            PrimitiveToConserved = rho
+        else if (index==1) then
+            PrimitiveToConserved = px
+        else if (index==2) then
+            PrimitiveToConserved = E
+        end if  
+    end function PrimitiveToConserved
+
+    attributes(device) real(8) function ConservedToPrimitive(index, rho, px, E, gamma)
+        integer(4), intent(in):: index 
+        real(8), intent(in) :: rho, px, E, gamma
+
+        real(8) :: v, P    
+
+        v = px/rho
+        P = (gamma-1)*(E-0.5_8*rho*v**2)
+
+        if (index==0) then
+            ConservedToPrimitive = rho
+        else if (index==1) then
+            ConservedToPrimitive = v
+        else if (index==2) then
+            ConservedToPrimitive = P
+        end if  
+    end function ConservedToPrimitive
+end module 
+
+module LocalFace
+    implicit none
+    
+contains
+    attributes(device) real(8) function GetFlux(index, rho, v, P, gamma)
+        integer(4), intent(in) :: index
+        real(8), intent(in) :: rho, v, P, gamma
+
+        real(8) :: E
+       
+        E = P/(gamma-1)+0.5_8*rho*v**2
+
+        if (index==0) then
+            GetFlux = rho*v
+        else if (index==1) then
+            GetFlux = rho*v**2+P
+        else if (index==2) then
+            GetFlux = (E+P)*v
+        end if     
+    end function GetFlux
+
+    attributes(device) real(8) function GetSoundSpeed(rho, P, gamma)
+        real(8), intent(in) :: rho, P, gamma
+
+        GetSoundSpeed = (gamma*P/rho)**0.5_8
+    end function GetSoundSpeed 
+end module
+
+module RiemannSolvers
+    use LocalConvertor
+    use LocalFace
+    implicit none
+    
+contains 
+    attributes(device) real(8) function GetNumericalFlux(index, rhoL, vL, PL, rhoR, vR, PR, SL, SR, gamma)
+        integer(4), intent(in) :: index 
+        real(8), intent(in) :: rhoL, vL, PL, rhoR, vR, PR, SL, SR, gamma
+
+        real(8) :: UL, UR, FL, FR
+
+        if (SL>=0) then 
+            GetNumericalFlux = GetFlux(index, rhoL, vL, PL, gamma)
+        else if (SL<0 .and. 0<SR) then
+            UL = PrimitiveToConserved(index, rhoL, vL, PL, gamma) 
+            UR = PrimitiveToConserved(index, rhoR, vR, PR, gamma)
+            FL = GetFlux(index, rhoL, vL, PL, gamma)
+            FR = GetFlux(index, rhoR, vR, PR, gamma)
+            GetNumericalFlux = (SR*FL-SL*FR+SR*SL*(UR-UL))/(SR-SL)
+        else 
+            GetNumericalFlux = GetFlux(index, rhoR, vR, PR, gamma)
+        end if 
+    end function GetNumericalFlux
+end module 
+
+module GlobalFlow
+    use LocalConvertor
+    use LocalFace
+    use RiemannSolvers
+    implicit none
+
+contains 
+    attributes(global) subroutine SetNumericalFlux(WField, flux, maxWaveSpeed, gamma, n, nTot)
+        real(8), intent(in) :: WField(0:nTot-1, 0:2)
+        real(8), intent(out) :: flux(0:n, 0:2)
+        real(8), intent(out) :: maxWaveSpeed(0:n)
+        real(8), value, intent(in) :: gamma
+        integer(4), value, intent(in) :: n, nTot
+
+        integer(4) :: xi, i
+        real(8) :: rhoL, rhoR, vL, vR, PL, PR, cL, cR, SL, SR
+        
+        xi = blockDim%x * (blockIdx%x-1) + threadIdx%x - 1
+        i = blockDim%y * (blockIdx%y-1) + threadIdx%y - 1
+
+        if (xi<n+1 .and. i<3) then
+            rhoL = WField(xi, 0)
+            vL = WField(xi, 1)
+            PL = WField(xi, 2)
+            cL = GetSoundSpeed(rhoL, PL, gamma);
+
+            rhoR = WField(xi+1, 0)
+            vR = WField(xi+1, 1)
+            PR = WField(xi+1, 2)
+            cR = GetSoundSpeed(rhoR, PR, gamma);
+
+            SL = Min(vL-cL, vR-cR)
+            SR = Max(vL+cL, vR+cR)
+            maxWaveSpeed(xi) = Max(Abs(SL), Abs(SR))
+            flux(xi, i) = GetNumericalFlux(i, rhoL, vL, PL, rhoR, vR, PR, SL, SR, gamma)
+        end if
+    end subroutine SetNumericalFlux
+
+    attributes(global) subroutine GetUpdatedPrimitiveField(flux, WField, newWField, gamma, dt, dL, n, nTot)   
+        real(8), intent(in) :: flux(0:n, 0:2)
+        real(8), intent(in) :: WField(0:nTot-1, 0:2)
+        real(8), intent(out) :: newWField(0:nTot-1, 0:2)
+        real(8), value, intent(in) :: gamma, dt, dL
+        integer(4), value, intent(in) :: n, nTot
+        
+        integer(4) :: xi
+        real(8) :: rho, v, P, px, E
+        real(8) :: U(0:2), newU(0:2)
+        
+        xi = blockDim%x * (blockIdx%x-1) + threadIdx%x - 1
+        
+        if (xi<n) then
+            rho = WField(xi+1, 0)
+            v = WField(xi+1, 1)
+            P = WField(xi+1, 2)
+
+            U(0) = PrimitiveToConserved(0, rho, v, P, gamma) 
+            U(1) = PrimitiveToConserved(1, rho, v, P, gamma) 
+            U(2) = PrimitiveToConserved(2, rho, v, P, gamma) 
+
+            newU(:) = U(:)-dt/dL*(flux(xi+1, :)-flux(xi, :))      
+
+            rho = newU(0)
+            px = newU(1)
+            E = newU(2)
+            newWField(xi+1, 0) = ConservedToPrimitive(0, rho, px, E, gamma)
+            newWField(xi+1, 1) = ConservedToPrimitive(1, rho, px, E, gamma)
+            newWField(xi+1, 2) = ConservedToPrimitive(2, rho, px, E, gamma)
+        end if
+    end subroutine GetUpdatedPrimitiveField
+end module
+
+subroutine UpdateFlow(WField, WFieldOut, n, nTot, dL, gamma, CFL, endTime, time, step, timeList) BIND(C, NAME='UpdateFlow')
+    use ISO_C_BINDING, ONLY: C_INT, C_DOUBLE
+    use cudafor  
+    use GlobalFlow
+    implicit none
+    real(8), intent(inout) :: WField(0:nTot-1, 0:2)
+    real(8), intent(out) :: WFieldOut(0:nTot-1, 0:2, 0:99)
+    integer(4), intent(in) :: n, nTot
+    real(8), intent(in) :: dL, gamma, CFL, endTime, time
+    integer(4), intent(inout) :: step
+    real(8), intent(out) :: timeList(0:99)
+    
+    integer(4) :: synchronizer, thisStep
+    real(8) :: dt
+    real(8), device, allocatable :: GPUWField(:,:), GPUWFieldOut(:,:,:), GPUFlux(:, :), GPUMaxWaveSpeed(:)                     
+    type(dim3) :: Grid, Block
+    
+    allocate(GPUWField(0:nTot-1, 0:2), GPUWFieldOut(0:nTot-1, 0:2, 0:99), GPUFlux(0:n, 0:2), GPUMaxWaveSpeed(0:n))
+    Block = dim3(32, 3, 1) 
+    Grid = dim3((nTot+32)/32, 1, 1) 
+    GPUWField = WField
+    
+    do thisStep = 0, Size(WFieldOut, DIM=3)-1
+        call SetNumericalFlux<<<Grid, Block>>>(GPUWField, GPUFlux, GPUMaxWaveSpeed, gamma, n, nTot)
+        synchronizer = cudaDeviceSynchronize()
+        
+        if (maxval(GPUMaxWaveSpeed)==0) then
+            dt = 1d-9
+        else
+            dt = CFL*dL/maxval(GPUMaxWaveSpeed)
+        end if
+        if (time+dt>endTime) then
+            dt = endTime-time
+        end if 
+        
+        call GetUpdatedPrimitiveField<<<Grid, Block>>>(GPUFlux, GPUWField, GPUWField, gamma, dt, dL, n, nTot)
+        synchronizer = cudaDeviceSynchronize()
+        GPUWField(0,:) = GPUWField(1,:)
+        GPUWField(nTot-1,:) = GPUWField(nTot-2,:)
+
+        GPUWFieldOut(:, :, thisStep) = GPUWField
+
+        if (Abs(time-endTime)<1D-9) then
+            exit
+        else
+            time = time+dt
+            step = step+1
+            timeList(thisStep) = time
+            write(*,'("Evolution time in this step", I4, ": ", F20.17)') step, time
+        end if
+    end do
+    
+    WFieldOut = GPUWFieldOut
+    deallocate(GPUWField, GPUWFieldOut, GPUFlux, GPUMaxWaveSpeed)   
+end subroutine
