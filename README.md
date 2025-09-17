@@ -29,18 +29,14 @@ First, you need to set five parameters:
 - L: The length of the space domain.
 - gamma: gamma is heat capacity ratio of fluid. For ideal gas, gamma is 5.0/3.0 and 1.4 for standard Sod shock tube test.
 
-You need to save this five numbers as a NumPy array, then output a binary file. Please note that their type is double, `numpy.double()` can covert a numeber into a double: 
+You need to save this five numbers as a NumPy array, then output a binary file. Please note that their type is double, `numpy.double()` can covert a numeber into a double. About the order of parameters in a NumPy array, please follow the code: 
 ```
 parameters = np.array([np.double(CFL), np.double(evolutionTime), np.double(n), np.double(L), np.double(gamma)])
-```
-About the order of parameters in a NumPy array, please follow the code.  
-
-Then, you output a binary file saving parameters and the file name is the number of step plus BinaryParameters.bin:
-
+``` 
+Then, you output a binary file saving parameters and the file name is the number of step plus BinaryParameters.bin. We set the number of initial step as 0 usually:
 ```
 parameters.tofile(os.path.join(path, "0BinaryParameters.bin"))
 ```
-We set the number of initial step as 0 usually.
 
 Second, you need to set three variables:
 ### 2. Running a simulation
