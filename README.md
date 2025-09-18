@@ -51,7 +51,7 @@ density = np.zeros(N)
 velocity = np.zeros(N)
 pressure = np.zeros(N)
 ```
-Now, we want to simulate Sod shock tube so set initial conditions for Sod shock tube in the domain $x\in[0, 1]$ (It should include ghost cells in numerical simulations.):
+Now, we want to simulate Sod shock tube so set initial conditions for Sod shock tube in the domain $x\in[0, 1]$ (You should extend domain in order to include ghost cells so you see that I type `numpy.linspace(-dL/2, L+dL/2, N)` rather than  `numpy.linspace(0, L, n)` in my Python code.):
 
 $$
 \begin{align*} 
