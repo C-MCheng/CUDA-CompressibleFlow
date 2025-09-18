@@ -119,7 +119,16 @@ p = variables[2]
 Now, you have parameters and variables at the step 50. You can do furthermore analysis such as data visualization in your Python script.
 
 I wrote a function `DrawData()` in my Python code SodShockTube.py being able to draw density, velocity and pressure fields at each step from all binary files in data folder, please refer my Python code.
+
+Below gif is visualization of three 1D field variables in Sod shock tube test.
+![](examples/result.gif)
 ### 4. Restarting a simulaiton
 It's very easy to restart a smulation if you have binary files from last turn. You just reactivate exe file again, key last step or other step from which you want to restart and then key another value of end time.
 However, please note that if you close software or cease simulation abnormally in last turn, you should restart from the second to last step rather than the last because the data may not completed in the last step output.
 ## Performance
+Finally, we take the Sod shock tube as a example to talk about time cost and GPU speedup in this software. Unfortunately, GPU speedup in the 1D compressible fluid simulations seems not good. 
+I attribute this disappointed result to low arithmetic intensity. In other words, compared arithmetic computing, data transfer and output files dominate time cost. 
+
+In order to show low arithmetic intensity. I designed two definition of speedup in my software:
+1. (time of CPU parallel computing + Binary files output)/(time of GPU parallel computing + data transfer between CPU and GPU + Binary files output)
+2. (time of CPU parallel computing)/(time of GPU parallel computing + data transfer between CPU and GPU)
