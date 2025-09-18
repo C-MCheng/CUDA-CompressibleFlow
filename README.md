@@ -87,7 +87,7 @@ For example, we output initial binary files as 0BinaryParameters.bin and 0Binary
 
 Then, you see `Please input the value of the end time for your simulation:`. For standard Sod shock tube test, you key 0.2 and then press enter but also key other values what you want of course as long as the value of end time is larger than of initial evolution time.
 
-Next, if you execute Linux-x64 on Linux or WSL2 OS and also install Nvidia GPU in your computer, you see `Do you want parallel computing with CUDA? Please press Y/y if you want or any other key if not.`, please follow this instruction to switch on or off GPU parallel computing (However, 1D compressible fluid dynamics isn't a high arithmetic intensity model actually so that there is no outstanding speedup for GPU in most cases. Please refer the section [Performance](#performance)).
+Next, if you execute Linux-x64 version on Linux or WSL2 and also install Nvidia GPU in your computer, the instruction will show `Do you want parallel computing with CUDA? Please press Y/y if you want or any other key if not.`, please follow this instruction to switch on or off GPU parallel computing (However, 1D compressible fluid dynamics isn't a high arithmetic intensity model actually so that there is no outstanding speedup for GPU in most cases. Please refer the section [Performance](#performance)).
 
 You see `Congratulations! All initial settings are already set up successfully. Your simulation starts now!` if all settings is successfully and the software simulates your model until reaching end time you key. 
 
