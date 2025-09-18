@@ -42,7 +42,7 @@ parameters.tofile(os.path.join(path, "0BinaryParameters.bin"))
 Because of storage limit of WSL2, saving binary files in desktop is more convenient.
 
 Numerical algorithms adopted in this software requires one ghost cell at each endpoint so the total number of cells is `N = n + 2` but the space domain excludes ghost cell such that the cell length is `dL = L/n`.
-According to this ghost cell setting, you write down coordinates of each cells with NumPy: `x = np.linspace(-dL/2, L+dL/2, N)`.
+According to this ghost cell setting, you write down coordinates of each cells with NumPy: `x = numpy.linspace(-dL/2, L+dL/2, N)`.
 
 Second, you need to set three variables. They are physics fields with N data:
 ```
@@ -50,7 +50,7 @@ density = np.zeros(N)
 velocity = np.zeros(N)
 pressure = np.zeros(N)
 ```
-Now, we want to simulate Sod shock tube so set initial conditions for Sod shock tube in the domain $x\in[0, 1]$ (It includes ghost cells in numerical simulations.):
+Now, we want to simulate Sod shock tube so set initial conditions for Sod shock tube in the domain $x\in[0, 1]$ (It should include ghost cells in numerical simulations.):
 
 $$
 \begin{align*} 
@@ -74,17 +74,25 @@ pressure = np.where(x<0.5, 1.0, 0.1)
 ```
 Before output field varables data, you need to connect them into a flattened array in the order of density, velocity and pressure due to the data structure of the binary file:
 ```
-flattenPrimitive = np.concatenate([
-np.double(density), 
-np.double(velocity), 
-np.double(pressure)])
+flattenPrimitive = np.concatenate([np.double(density), np.double(velocity), np.double(pressure)])
 ```
 Then, you output a binary file saving variables and the file name is the number of step plus BinaryVariables.bin. We set the number of initial step as 0 usually. The `path` is the same as BinaryParameters.bin:
 ```
 flattenPrimitive.tofile(os.path.join(path, "0BinaryVariables.bin"))
 ```
-Now, you have initial binary files 0BinaryParameters.bin and 0BinaryVariables.bin in proper path and next we click exe file to start the simulation.
+Now, you have initial binary files 0BinaryParameters.bin and 0BinaryVariables.bin in proper path and next we activate exe file to start the simulation.
 ### 2. Running a simulation
+The exe file name is CompressibleFlow1D, please activate it. You see `Please input your initial step:` first, please key the number of the initail step you set. 
+For example, we output initial binary files as 0BinaryParameters.bin and 0BinaryVariables.bin and the number 0 included in file name is our intial step so you key 0 and then press enter.
+
+Then, you see `Please input the value of the end time for your simulation:`. For standard Sod shock tube test, you key 0.2 and then press enter but also key other values what you want of course as long as the value of end time is larger than of initial evolution time.
+
+Next, if you execute Linux-x64 on Linux or WSL2 OS and also install Nvidia GPU in your computer, you see `Do you want parallel computing with CUDA? Please press Y/y if you want or any other key if not.`, please follow this instruction to switch on or off GPU parallel computing (However, 1D compressible fluid dynamics isn't a high arithmetic intensity model actually so that there is no outstanding speedup for GPU in most cases. Please refer the section [Performance](#performance)).
+
+You see `Congratulations! All initial settings are already set up successfully. Your simulation starts now!` if all settings is successfully and the software simulates your model until reaching end time you key. 
+
+Finally, when you see `Simulation finished! Please press any key to exit!`, you press any key to close software, then you will find many binary files with different time steps. 
+Each file includes parameters and physics field variables at different time step so you can read these files to do data analysis. 
 ### 3. Reading and analyzing results
 ### 4. Restarting a simulaiton
 ## Performance
