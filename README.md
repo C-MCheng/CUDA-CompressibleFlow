@@ -22,7 +22,7 @@ The most difficult thing for users is to write a initial state of fluid into a b
 Although many languages are able to read/write binary files, Python is easiest such that I will teach you how to write with Python.
 
 Sod shock tube is a classical test problem for 1D compressible flow so let's learn how to write the initial binary file through this pedagogical example.
-I had put a completed Python code in folder named examples in this repository, please refer it.
+I had put a completed Python code SodShockTube.py in folder named examples in this repository, please refer it.
 
 First, you need to set five parameters:
 - `CFL`: This is the Courant–Friedrichs–Lewy number which is lower than 1.0. The lower the CFL is, the more stable numerically the simulation is.
@@ -45,7 +45,7 @@ Because of storage limit of WSL2, saving binary files in desktop is more conveni
 Numerical algorithms adopted in this software requires one ghost cell at each endpoint so the total number of cells is `N = n + 2` but the space domain excludes ghost cell such that the cell length is `dL = L/n`.
 According to this ghost cell setting, you write down coordinates of each cells with NumPy: `x = numpy.linspace(-dL/2, L+dL/2, N)`.
 
-Second, you need to set three variables. They are physics fields with N data:
+Second, you need to set three 1D field variables with N data:
 ```
 density = np.zeros(N)
 velocity = np.zeros(N)
@@ -73,7 +73,7 @@ density = np.where(x<0.5, 1.0, 0.125)
 velocity = np.where(x<0.5, 0.0, 0.0)
 pressure = np.where(x<0.5, 1.0, 0.1)
 ```
-Before output field varables data, you need to connect them into a flattened array in the order of density, velocity and pressure due to the data structure of the binary file:
+Before output field varables data, you need to append them into a flattened array in the order of density, velocity and pressure due to the data structure of the binary file:
 ```
 flattenPrimitive = np.concatenate([np.double(density), np.double(velocity), np.double(pressure)])
 ```
@@ -101,5 +101,25 @@ Each file includes parameters and physics field variables at different time step
 One more thing you need to know is the maximum steps for GPU parallel computing is 100. Thus, if evolution time didn't reach your end time within 100 steps, you need to restart your simulation from the last output step. 
 The purpose of this feature is to reduce data transfer times between CPU and GPU. Please refer the section 4. Restarting a simulaiton to know how to restart.
 ### 3. Reading and analyzing results
+After a simulation, you can read each binary data with `numpy.fromfile()`. For example, in data folder you have 50BinaryParameters.bin and 50BinaryVariables.bin and want to analyze fluid state at step 50. Reading them in your Python script is:
+```
+parameters = np.fromfile(/your_data_folder_path/50BinaryParameters.bin)
+CFL = parameters[0]
+evolutionTime = parameters[1]
+n = np.int32(parameters[2]) #n must be converted to an integer.
+L = parameters[3]
+gamma = parameters[4]
+
+flattenVariables = np.fromfile(/your_data_folder_path/50BinaryVariables.bin)
+variables = flattenVariables.reshape((3, -1))
+rho = variables[0]
+v = variables[1]
+p = variables[2]
+```
+Now, you have parameters and variables at the step 50. You can do furthermore analysis such as data visualization in your Python script.
+
+I wrote a function `DrawData()` in my Python code SodShockTube.py being able to draw density, velocity and pressure fields at each step from all binary files in data folder, please refer my Python code.
 ### 4. Restarting a simulaiton
+It's very easy to restart a smulation if you have binary files from last turn. You just reactivate exe file again, key last step or other step from which you want to restart and then key another value of end time.
+However, please note that if you close software or cease simulation abnormally in last turn, you should restart from the second to last step rather than the last because the data may not completed in the last step output.
 ## Performance
