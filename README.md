@@ -6,6 +6,7 @@ This software is to simulate one-dimensional compressible fluid dynamics.
 - Graphics: Nvidia GPU (If you want to switch on CUDA-acceleration.)
 - Programming skills: Python and NumPy
 ## Software features
+- Just-in-time compilation
 - Console APP
 - Binary file I/O
 - CPU Parallel computing
@@ -16,19 +17,19 @@ This software is to simulate one-dimensional compressible fluid dynamics.
 - HLLE solver
 - Euler method
 ## User guide
-### 1. Writing initial conditions into a binary file
+### 1. Writing initial conditions into binary files
 The most difficult thing for users is to write a initial state of fluid into a binary file. However, don't worry, it's not too hard if you ara able to write Python and NumPy. 
 Although many languages are able to read/write binary files, Python is easiest such that I will teach you how to write with Python.
 
-Sod shock tube is a classical test problem for 1D compressible flow so let's learn how to write the inital binary file through this pedagogical example.
-I had put a complete Python code in examples folder in this repository, please refer it.
+Sod shock tube is a classical test problem for 1D compressible flow so let's learn how to write the initial binary file through this pedagogical example.
+I had put a completed Python code in folder named examples in this repository, please refer it.
 
 First, you need to set five parameters:
-- CFL: This is the Courant–Friedrichs–Lewy number which is lower than 1.0. The lower the CFL is, the more stable numerically the simulation is.
-- evolutionTime: The evolution time means a time interval the fluid flows from start in the simuation. For initial condition, we set 0.0 usually.
-- n: n is the number of cells. The space domain is divided by these cells and each cell has a coordinate and physical variables. The more the the number of cells, the more accurate numerically the simulation is.
-- L: The length of the space domain.
-- gamma: gamma is heat capacity ratio of fluid. For ideal gas, gamma is 5.0/3.0 and 1.4 for standard Sod shock tube test.
+- `CFL`: This is the Courant–Friedrichs–Lewy number which is lower than 1.0. The lower the CFL is, the more stable numerically the simulation is.
+- `evolutionTime`: The evolution time means a time interval the fluid flows from start in the simuation. For initial condition, we set 0.0 usually.
+- `n`: n is the number of cells. The space domain is divided by these cells and each cell has a coordinate and physical variables. The more the the number of cells, the more accurate numerically the simulation is.
+- `L`: The length of the space domain.
+- `gamma`: gamma is heat capacity ratio of fluid. For ideal gas, gamma is 5.0/3.0 and 1.4 for standard Sod shock tube test.
 
 You need to save this five numbers as a NumPy array, then output a binary file. Please note that their type is double, `numpy.double()` can covert a numeber into a double. About the order of parameters in a NumPy array, please follow the code: 
 ```
@@ -82,7 +83,10 @@ flattenPrimitive.tofile(os.path.join(path, "0BinaryVariables.bin"))
 ```
 Now, you have initial binary files 0BinaryParameters.bin and 0BinaryVariables.bin in proper path and next we activate exe file to start the simulation.
 ### 2. Running a simulation
-The exe file name is CompressibleFlow1D, please activate it. You see `Please input your initial step:` first, please key the number of the initail step you set. 
+If you don't have exe file yet. Please go to Releases page in this repository and download a zip file corresponding to your OS. The exe file name is CompressibleFlow1D, please activate it.
+By the way, for Linux-x64 version, you need to execute command line `chomd +x CompressibleFlow1D` at first time. 
+
+After starting software, You see `Please input your initial step:` first, please key the number of the initail step you set. 
 For example, we output initial binary files as 0BinaryParameters.bin and 0BinaryVariables.bin and the number 0 included in file name is our intial step so you key 0 and then press enter.
 
 Then, you see `Please input the value of the end time for your simulation:`. For standard Sod shock tube test, you key 0.2 and then press enter but also key other values what you want of course as long as the value of end time is larger than of initial evolution time.
@@ -93,6 +97,9 @@ You see `Congratulations! All initial settings are already set up successfully. 
 
 Finally, when you see `Simulation finished! Please press any key to exit!`, you press any key to close software, then you will find many binary files with different time steps in data folder. 
 Each file includes parameters and physics field variables at different time step so you can read these files to do data analysis. 
+
+One more thing you need to know is the maximum steps for GPU parallel computing is 100. Thus, if evolution time didn't reach your end time within 100 steps, you need to restart your simulation from the last output step. 
+The purpose of this feature is to reduce data transfer times between CPU and GPU. Please refer the section 4. Restarting a simulaiton to know how to restart.
 ### 3. Reading and analyzing results
 ### 4. Restarting a simulaiton
 ## Performance
