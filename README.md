@@ -3,7 +3,7 @@
 This software is to simulate one-dimensional compressible fluid dynamics.
 ## Requirements
 - OS: Windows-x64 | Linux-x64 | macOS-arm64
-- Graphics: Nvidia GPU (If you want to switch on CUDA-acceleration.)
+- Graphics: NVIDIA GPU (If you want to switch on CUDA-acceleration.)
 - Programming skills: Python and NumPy
 ## Software features
 - Just-in-time compilation
@@ -121,14 +121,34 @@ Now, you have parameters and variables at the step 50. You can do furthermore an
 I wrote a function `DrawData()` in my Python code SodShockTube.py being able to draw density, velocity and pressure fields at each step from all binary files in data folder, please refer my Python code.
 
 Below gif is visualization of three 1D field variables in Sod shock tube test.
+
 ![](examples/result.gif)
 ### 4. Restarting a simulaiton
 It's very easy to restart a smulation if you have binary files from last turn. You just reactivate exe file again, key last step or other step from which you want to restart and then key another value of end time.
 However, please note that if you close software or cease simulation abnormally in last turn, you should restart from the second to last step rather than the last because the data may not completed in the last step output.
 ## Performance
-Finally, we take the Sod shock tube as a example to talk about time cost and GPU speedup in this software. Unfortunately, GPU speedup in the 1D compressible fluid simulations seems not good. 
+Finally, we take the Sod shock tube as an example to talk about time cost and GPU speedup in this software. Unfortunately, GPU speedup in the 1D compressible fluid simulations seems not good. 
 I attribute this disappointed result to low arithmetic intensity. In other words, compared arithmetic computing, data transfer and output files dominate time cost. 
 
-In order to show low arithmetic intensity. I designed two definition of speedup in my software:
-1. (time of CPU parallel computing + Binary files output)/(time of GPU parallel computing + data transfer between CPU and GPU + Binary files output)
-2. (time of CPU parallel computing)/(time of GPU parallel computing + data transfer between CPU and GPU)
+The performance results below are from my hardware:
+- CPU: AMD Ryzen 9 5900X
+- GPU: NVIDIA RTX 3080 Ti
+- RAM: DDR4-3600 32GB
+
+In order to show low arithmetic intensity. I designed two definition of speedup in my software. The first definition is:
+
+$\displaystyle \text{speedup} = \frac{CPU}{GPU} = \frac{\text{time of CPU parallel computing}}{\text{time of GPU parallel computing + time of data transfer between CPU and GPU}}$
+
+This definition excludes time of binary files output and ,as shown in figure below, we see a obvious speedup for GPU when the number of cells is larger than 100000.
+
+![](examples/performanceWithoutOutput.png)
+
+However, this is impractical because I skip the files output in this measure. Besides, too large number of cells results in time evolving very slow.
+Then, let's include time cost of files output. The other definition is:
+
+$\displaystyle \text{speedup} = \frac{CPU}{GPU} = \frac{\text{time of CPU parallel computing + time of CPU Binary files output}}{\text{time of GPU parallel computing + time of data transfer between CPU and GPU + time of CPU Binary files output}}$
+
+Unfortunately, as shown in figure below, speedup is just larger than 1.0 slightly and, compared with above figure, this is bacause the time cost is dominated by files output. 
+Thus, for this 1D compressible flow with the first order accuracy, GPU speedup is very small due to low arithmetic intensity.
+
+![](examples/performanceWithOutput.png)
