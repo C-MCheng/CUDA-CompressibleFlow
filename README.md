@@ -1,10 +1,11 @@
 # CUDA-CompressibleFlow
 ## Introduction
 This software is to simulate one-dimensional compressible fluid dynamics.
+By the way, if you are interested in my work about three-dimensional magnetohydrodynamics, please refer this [repository](https://github.com/C-MCheng/Magnetohydrodynamics-Demo).
 ## Requirements
 - OS: Windows-x64 | Linux-x64 | macOS-arm64
 - Graphics: NVIDIA GPU (If you want to switch on CUDA-acceleration.)
-- Programming skills: Python and NumPy
+- Programming: Python 3 and NumPy
 ## Software features
 - Just-in-time compilation
 - Console APP
